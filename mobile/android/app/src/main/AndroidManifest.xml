@@ -16,7 +16,7 @@
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
     <application
-        android:label="rpi_provisioner"
+        android:label="Pi Provisioner"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

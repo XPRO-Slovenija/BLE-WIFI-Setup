@@ -96,8 +96,9 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Future<void> _rename(ScanResult r) async {
     final id = r.device.remoteId.str;
-    final controller =
-        TextEditingController(text: widget.settings.aliasFor(id) ?? '');
+    final controller = TextEditingController(
+      text: widget.settings.aliasFor(id) ?? '',
+    );
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -114,7 +115,9 @@ class _ScanScreenState extends State<ScanScreen> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, controller.text),
             child: const Text('Save'),
@@ -131,14 +134,17 @@ class _ScanScreenState extends State<ScanScreen> {
       builder: (ctx) => AlertDialog(
         title: Text('Forget "${_displayName(r)}"?'),
         content: const Text(
-            'This removes its saved name and Bluetooth pairing from this phone.'),
+          'This removes its saved name and Bluetooth pairing from this phone.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Forget')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Forget'),
+          ),
         ],
       ),
     );
@@ -154,10 +160,13 @@ class _ScanScreenState extends State<ScanScreen> {
     if (!mounted) return;
     setState(() => _results.remove(r.device.remoteId));
     if (Platform.isIOS) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text(
-            'Also forget this device in iOS Settings ▸ Bluetooth to remove pairing.'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Also forget this device in iOS Settings ▸ Bluetooth to remove pairing.',
+          ),
+        ),
+      );
     }
   }
 
@@ -170,16 +179,16 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   IconData _themeIcon(ThemeMode m) => switch (m) {
-        ThemeMode.light => Icons.light_mode,
-        ThemeMode.dark => Icons.dark_mode,
-        ThemeMode.system => Icons.brightness_auto,
-      };
+    ThemeMode.light => Icons.light_mode,
+    ThemeMode.dark => Icons.dark_mode,
+    ThemeMode.system => Icons.brightness_auto,
+  };
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Set up a Raspberry Pi'),
+        title: const Text('Set up a Raspberry Pi\'s WIFI'),
         actions: [
           PopupMenuButton<ThemeMode>(
             icon: Icon(_themeIcon(widget.settings.themeMode)),
@@ -213,8 +222,9 @@ class _ScanScreenState extends State<ScanScreen> {
             IconButton(
               tooltip: 'Scan',
               icon: const Icon(Icons.refresh),
-              onPressed:
-                  _adapterState == BluetoothAdapterState.on ? _startScan : null,
+              onPressed: _adapterState == BluetoothAdapterState.on
+                  ? _startScan
+                  : null,
             ),
         ],
       ),
@@ -250,11 +260,15 @@ class _ScanScreenState extends State<ScanScreen> {
       return _Message(
         icon: Icons.bluetooth_searching,
         title: _scanning ? 'Searching…' : 'No devices found',
-        subtitle: 'Make sure the Pi is powered on and running the '
+        subtitle:
+            'Make sure the Pi is powered on and running the '
             'provisioning service.',
         action: _scanning
             ? null
-            : FilledButton(onPressed: _startScan, child: const Text('Scan again')),
+            : FilledButton(
+                onPressed: _startScan,
+                child: const Text('Scan again'),
+              ),
       );
     }
 
@@ -284,10 +298,12 @@ class _ScanScreenState extends State<ScanScreen> {
             final navigator = Navigator.of(context);
             await FlutterBluePlus.stopScan();
             if (!mounted) return;
-            navigator.push(MaterialPageRoute(
-              builder: (_) =>
-                  ProvisionScreen(device: r.device, title: _displayName(r)),
-            ));
+            navigator.push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    ProvisionScreen(device: r.device, title: _displayName(r)),
+              ),
+            );
           },
         );
       },

@@ -20,7 +20,7 @@ class RpiProvisionerApp extends StatelessWidget {
     return AnimatedBuilder(
       animation: settings,
       builder: (context, _) => MaterialApp(
-        title: 'Pi WiFi Setup',
+        title: 'Pi Provisioner',
         debugShowCheckedModeBanner: false,
         theme: lightTheme,
         darkTheme: darkTheme,
