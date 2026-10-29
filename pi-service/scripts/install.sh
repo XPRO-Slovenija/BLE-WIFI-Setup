@@ -39,13 +39,22 @@ cmake --build "$BUILD_DIR" -j "$(nproc)"
 echo "==> Installing binary to /usr/local/sbin"
 install -m 0755 "$BUILD_DIR/rpi-ble-provision" /usr/local/sbin/rpi-ble-provision
 
-echo "==> Installing systemd unit"
-install -m 0644 "$PROJECT_DIR/systemd/rpi-ble-provision.service" \
-  /etc/systemd/system/rpi-ble-provision.service
+if [[ ! -e /etc/rpi-ble-provision.conf ]]; then
+  echo "==> Installing default config to /etc/rpi-ble-provision.conf"
+  install -m 0644 "$PROJECT_DIR/config/rpi-ble-provision.conf" /etc/rpi-ble-provision.conf
+fi
+
+echo "==> Installing systemd units"
+for unit in rpi-ble-provision.service rpi-ble-provision-reload.service \
+            rpi-ble-provision-reload.path; do
+  install -m 0644 "$PROJECT_DIR/systemd/$unit" "/etc/systemd/system/$unit"
+done
 
 echo "==> Enabling and starting service"
 systemctl daemon-reload
 systemctl enable --now rpi-ble-provision.service
+# Restarts the service when /etc/rpi-ble-provision.{conf,name} change.
+systemctl enable --now rpi-ble-provision-reload.path
 
 echo
 echo "Done. Check status with:"

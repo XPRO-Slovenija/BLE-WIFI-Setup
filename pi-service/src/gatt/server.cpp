@@ -84,13 +84,6 @@ const char* kXmlAgent = R"XML(
   <method name="Cancel"/>
 </interface></node>)XML";
 
-const char* uuid_for_path(const char* path) {
-  if (g_strcmp0(path, kCharSsid) == 0) return kSsidListUUID;
-  if (g_strcmp0(path, kCharCreds) == 0) return kCredsUUID;
-  if (g_strcmp0(path, kCharStatus) == 0) return kStatusUUID;
-  return "";
-}
-
 std::vector<const char*> flags_for_path(const char* path) {
   if (g_strcmp0(path, kCharSsid) == 0) return {"encrypt-read", "encrypt-notify"};
   if (g_strcmp0(path, kCharCreds) == 0) return {"encrypt-write"};
@@ -119,15 +112,6 @@ GVariant* one_iface(const char* iface, GVariant* props) {
   g_variant_builder_init(&b, G_VARIANT_TYPE("a{sa{sv}}"));
   g_variant_builder_add(&b, "{s@a{sv}}", iface, props);
   return g_variant_builder_end(&b);
-}
-
-GVariant* char_props(const char* path) {
-  return props_dict({
-      {"UUID", g_variant_new_string(uuid_for_path(path))},
-      {"Service", g_variant_new_object_path(kSvc)},
-      {"Flags", string_array(flags_for_path(path))},
-      {"Notifying", g_variant_new_boolean(FALSE)},
-  });
 }
 
 // Wrap a byte payload as a "(ay)" reply tuple.
@@ -245,8 +229,8 @@ GDBusInterfaceInfo* iface_info(const char* xml) {
 
 } // namespace
 
-Server::Server(std::unique_ptr<wifi::Backend> wifi)
-    : wifi_(std::move(wifi)) {}
+Server::Server(config::Config cfg, std::unique_ptr<wifi::Backend> wifi)
+    : cfg_(std::move(cfg)), wifi_(std::move(wifi)) {}
 
 Server::~Server() {
   if (conn_) {
@@ -268,8 +252,10 @@ bool Server::start() {
     logging::error("no Bluetooth adapter found");
     return false;
   }
-  local_name_ = "rpi-prov-" + name_suffix();
-  logging::info("adapter %s, advertising as '%s'", adapter_.c_str(), local_name_.c_str());
+  local_name_ = cfg_.device_name.empty() ? "rpi-prov-" + name_suffix()
+                                          : cfg_.device_name;
+  logging::info("adapter %s, advertising as '%s' with service %s", adapter_.c_str(),
+                local_name_.c_str(), cfg_.service_uuid.c_str());
 
   prepare_adapter();
   if (!register_objects()) return false;
@@ -295,6 +281,11 @@ void Server::prepare_adapter() {
                      g_variant_new_boolean(TRUE));
   bluez::set_property(conn_, adapter_, "org.bluez.Adapter1", "DiscoverableTimeout",
                      g_variant_new_uint32(0));
+  // The adapter alias is the GAP Device Name a phone shows once connected or
+  // bonded; keep it in line with the advertised name when one is configured.
+  if (!cfg_.device_name.empty())
+    bluez::set_property(conn_, adapter_, "org.bluez.Adapter1", "Alias",
+                       g_variant_new_string(cfg_.device_name.c_str()));
 }
 
 bool Server::register_objects() {
@@ -351,13 +342,29 @@ bool Server::register_with_bluez() {
   return true;
 }
 
+const char* Server::uuid_for_path(const char* path) const {
+  if (g_strcmp0(path, kCharSsid) == 0) return cfg_.ssid_list_uuid.c_str();
+  if (g_strcmp0(path, kCharCreds) == 0) return cfg_.creds_uuid.c_str();
+  if (g_strcmp0(path, kCharStatus) == 0) return cfg_.status_uuid.c_str();
+  return "";
+}
+
+GVariant* Server::char_props(const char* path) const {
+  return props_dict({
+      {"UUID", g_variant_new_string(uuid_for_path(path))},
+      {"Service", g_variant_new_object_path(kSvc)},
+      {"Flags", string_array(flags_for_path(path))},
+      {"Notifying", g_variant_new_boolean(FALSE)},
+  });
+}
+
 GVariant* Server::managed_objects() {
   GVariantBuilder objs;
   g_variant_builder_init(&objs, G_VARIANT_TYPE("a{oa{sa{sv}}}"));
   g_variant_builder_add(
       &objs, "{o@a{sa{sv}}}", kSvc,
       one_iface(kIfaceService,
-                props_dict({{"UUID", g_variant_new_string(kServiceUUID)},
+                props_dict({{"UUID", g_variant_new_string(cfg_.service_uuid.c_str())},
                             {"Primary", g_variant_new_boolean(TRUE)}})));
   for (const char* path : {kCharSsid, kCharCreds, kCharStatus}) {
     g_variant_builder_add(&objs, "{o@a{sa{sv}}}", path,
@@ -369,7 +376,7 @@ GVariant* Server::managed_objects() {
 GVariant* Server::handle_get_property(const char* object_path, const char* iface,
                                       const char* property) {
   if (g_strcmp0(iface, kIfaceService) == 0) {
-    if (g_strcmp0(property, "UUID") == 0) return g_variant_new_string(kServiceUUID);
+    if (g_strcmp0(property, "UUID") == 0) return g_variant_new_string(cfg_.service_uuid.c_str());
     if (g_strcmp0(property, "Primary") == 0) return g_variant_new_boolean(TRUE);
   } else if (g_strcmp0(iface, kIfaceChar) == 0) {
     if (g_strcmp0(property, "UUID") == 0)
@@ -386,7 +393,7 @@ GVariant* Server::handle_get_property(const char* object_path, const char* iface
   } else if (g_strcmp0(iface, kIfaceAdv) == 0) {
     if (g_strcmp0(property, "Type") == 0) return g_variant_new_string("peripheral");
     if (g_strcmp0(property, "ServiceUUIDs") == 0)
-      return string_array({kServiceUUID});
+      return string_array({cfg_.service_uuid.c_str()});
     if (g_strcmp0(property, "LocalName") == 0)
       return g_variant_new_string(local_name_.c_str());
     if (g_strcmp0(property, "Discoverable") == 0)

@@ -1,0 +1,22 @@
+[Unit]
+Description=Raspberry Pi BLE WiFi Provisioning service
+Documentation=https://github.com/XPRO-Slovenija/BLE-WIFI-Setup
+# bluetoothd must be up; we manage WiFi so order after the network stack too.
+After=bluetooth.target network.target dbus.service
+Wants=bluetooth.target
+Requires=dbus.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/rpi-ble-provision
+# Root is required to talk to org.bluez on the system bus and to run
+# nmcli / wpa_cli. Hardening to a capability-scoped user is a future step.
+User=root
+Restart=on-failure
+RestartSec=2
+# Surface logs to the journal with our own tags.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

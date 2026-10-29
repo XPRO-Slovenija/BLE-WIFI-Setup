@@ -1,0 +1,10 @@
+[Unit]
+Description=Restart rpi-ble-provision to apply config changes
+Documentation=https://github.com/XPRO-Slovenija/BLE-WIFI-Setup
+
+[Service]
+Type=oneshot
+# Restart (not try-restart) so fixing a bad config revives a service that exited
+# with status 2; skip if the service is disabled, so it isn't started unasked.
+ExecCondition=/bin/systemctl -q is-enabled rpi-ble-provision.service
+ExecStart=/bin/systemctl restart rpi-ble-provision.service

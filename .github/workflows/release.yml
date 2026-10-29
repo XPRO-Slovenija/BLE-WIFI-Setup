@@ -1,0 +1,56 @@
+name: Release
+
+# Push a tag like v1.2.0 to build the arm64 Pi binary and publish it as a
+# GitHub release. The asset name matches the URL that
+# pi-service/pi-gen/files/install_rpi_ble_provision.sh downloads.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # Native arm64 runner (free for public repos), so no emulation is needed.
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build inside Debian Bookworm (Pi OS 12) so the binary links against a
+      # glibc/GLib no newer than the Pi's. Builds on Bookworm also run on Trixie.
+      - name: Build rpi-ble-provision (arm64)
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          docker run --rm --platform linux/arm64 -e VERSION \
+            -v "$PWD/pi-service:/src" -w /src debian:bookworm \
+            bash -euxc '
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                build-essential cmake pkg-config libglib2.0-dev nlohmann-json3-dev
+              cmake -S . -B build-arm64 -DCMAKE_BUILD_TYPE=Release \
+                -DRPI_BLE_PROVISION_VERSION="$VERSION"
+              cmake --build build-arm64 -j"$(nproc)"
+              strip build-arm64/rpi-ble-provision
+              ./build-arm64/rpi-ble-provision --version
+            '
+
+      - name: Package
+        run: |
+          mkdir dist
+          cp pi-service/build-arm64/rpi-ble-provision dist/
+          file dist/rpi-ble-provision | tee /dev/stderr | grep -q 'ARM aarch64'
+          (cd dist && sha256sum rpi-ble-provision > rpi-ble-provision.sha256)
+          cat dist/rpi-ble-provision.sha256
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Tags with a suffix (v1.2.0-rc1) are published as prereleases.
+          prerelease=""
+          [[ "$TAG" == *-* ]] && prerelease="--prerelease"
+          gh release create "$TAG" dist/rpi-ble-provision dist/rpi-ble-provision.sha256 \
+            --title "$TAG" --generate-notes --verify-tag $prerelease

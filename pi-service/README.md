@@ -18,7 +18,9 @@ screen, or existing network.
 ## BLE GATT contract
 
 Advertised as `rpi-prov-<suffix>` (suffix = last 4 of the Pi serial, else
-hostname), including the service UUID so the app can filter scans.
+hostname) unless a name is configured, including the service UUID so the app
+can filter scans. Both are configurable (see [Configuration](#configuration));
+the table shows the defaults.
 
 | Role | UUID | Properties | Payload |
 |---|---|---|---|
@@ -66,6 +68,39 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 sudo ./build/rpi-ble-provision   # run in foreground for debugging
 ```
+
+## Configuration
+
+Settings come from `/etc/rpi-ble-provision.conf` (optional; installed with
+everything commented out) and are overridden by command-line flags:
+
+| Flag | Config key | Meaning |
+|---|---|---|
+| `-c, --config PATH` | — | Read this config file instead (must exist) |
+| `-u, --service-uuid UUID` | `service_uuid` | Service UUID; **must end in `00`**. Characteristics are the same UUID ending `01` (SSID list), `02` (credentials), `03` (status) |
+| `-n, --name NAME` | `name` | Advertised Bluetooth name |
+| `-N, --name-file PATH` | `name_file` | Read the name from the first line of a file |
+
+Use `name` or `name_file`, not both. A configured name also becomes the
+adapter alias, so phones show it after connecting too. Names over 29 bytes are
+accepted with a warning, but BlueZ truncates them in the advertisement.
+
+```ini
+# /etc/rpi-ble-provision.conf
+service_uuid = 11111111-2222-3333-4444-555555555500
+name = Kitchen Display
+```
+
+Settings are read only at startup. `rpi-ble-provision-reload.path` (enabled by
+`install.sh`) restarts the service whenever `/etc/rpi-ble-provision.conf` or
+`/etc/rpi-ble-provision.name` changes, so use that path for `name_file` to get
+automatic renames. To watch a different file, add a `PathChanged=` line with
+`systemctl edit rpi-ble-provision-reload.path`. The restart drops any phone
+that is connected at the time.
+
+Invalid configuration exits with status 2, and the systemd unit does not restart
+on that status. The mobile app scans for the default service UUID, so a custom
+UUID needs a matching app build.
 
 Service management:
 ```sh

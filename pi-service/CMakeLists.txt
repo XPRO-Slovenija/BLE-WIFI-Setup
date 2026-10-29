@@ -28,6 +28,7 @@ endif()
 
 add_executable(rpi-ble-provision
   src/main.cpp
+  src/config.cpp
   src/util/subprocess.cpp
   src/wifi/networkmanager.cpp
   src/wifi/wpa_supplicant.cpp
@@ -37,6 +38,10 @@ add_executable(rpi-ble-provision
 )
 
 target_include_directories(rpi-ble-provision PRIVATE src)
+# Reported by --version; the release workflow sets it to the git tag.
+set(RPI_BLE_PROVISION_VERSION "dev" CACHE STRING "Version string reported by --version")
+target_compile_definitions(rpi-ble-provision PRIVATE
+  RPI_BLE_PROVISION_VERSION="${RPI_BLE_PROVISION_VERSION}")
 target_link_libraries(rpi-ble-provision PRIVATE PkgConfig::GIO nlohmann_json::nlohmann_json)
 
 include(GNUInstallDirs)

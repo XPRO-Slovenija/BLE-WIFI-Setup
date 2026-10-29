@@ -1,5 +1,6 @@
 #include <glib-unix.h>
 
+#include "config.h"
 #include "gatt/server.h"
 #include "util/log.h"
 #include "wifi/backend.h"
@@ -12,7 +13,16 @@ gboolean on_signal(gpointer user_data) {
 }
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
+  config::Config cfg;
+  switch (config::parse(argc, argv, cfg)) {
+    case config::ParseResult::Ok: break;
+    case config::ParseResult::Exit: return 0;
+    case config::ParseResult::Error: return 2;
+  }
+
+  logging::info("rpi-ble-provision %s", config::kVersion);
+
   GMainLoop* loop = g_main_loop_new(nullptr, FALSE);
 
   auto backend = wifi::detect();
@@ -22,7 +32,7 @@ int main() {
   }
   logging::info("using WiFi backend: %s", backend->name());
 
-  gatt::Server server(std::move(backend));
+  gatt::Server server(std::move(cfg), std::move(backend));
   if (!server.start()) {
     logging::error("failed to start GATT server; exiting");
     return 1;

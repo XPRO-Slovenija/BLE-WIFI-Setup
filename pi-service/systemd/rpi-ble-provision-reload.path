@@ -1,0 +1,13 @@
+[Unit]
+Description=Restart rpi-ble-provision when its config or name file changes
+Documentation=https://github.com/XPRO-Slovenija/BLE-WIFI-Setup
+
+[Path]
+# The service reads these only at startup. A name_file elsewhere needs its own
+# PathChanged= line, e.g. via `systemctl edit rpi-ble-provision-reload.path`.
+PathChanged=/etc/rpi-ble-provision.conf
+PathChanged=/etc/rpi-ble-provision.name
+Unit=rpi-ble-provision-reload.service
+
+[Install]
+WantedBy=multi-user.target

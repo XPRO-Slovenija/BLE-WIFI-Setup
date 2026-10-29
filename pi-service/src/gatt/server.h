@@ -7,27 +7,23 @@
 #include <string>
 #include <vector>
 
+#include "config.h"
 #include "wifi/backend.h"
 
 namespace gatt {
 
-// 128-bit UUIDs for the provisioning GATT service and its characteristics.
-// These are the contract shared with the mobile app — keep them in sync.
-constexpr const char* kServiceUUID = "7a8b4e10-9c2d-4f3a-bf21-0a1b2c3d4e00";
-constexpr const char* kSsidListUUID = "7a8b4e10-9c2d-4f3a-bf21-0a1b2c3d4e01";
-constexpr const char* kCredsUUID = "7a8b4e10-9c2d-4f3a-bf21-0a1b2c3d4e02";
-constexpr const char* kStatusUUID = "7a8b4e10-9c2d-4f3a-bf21-0a1b2c3d4e03";
-
 // BlueZ GATT peripheral exposing the provisioning service. Talks to bluetoothd
 // over the system D-Bus, registers a GATT application + advertisement + pairing
 // agent, and applies received WiFi credentials through the wifi::Backend.
+// The service/characteristic UUIDs and advertised name come from config::Config
+// and are the contract shared with the mobile app.
 //
 // Threading: D-Bus callbacks run on the GLib main loop thread. The (slow) WiFi
 // join runs on a detached worker thread and marshals its result back to the
 // main loop via g_idle_add before emitting notifications.
 class Server {
  public:
-  explicit Server(std::unique_ptr<wifi::Backend> wifi);
+  Server(config::Config cfg, std::unique_ptr<wifi::Backend> wifi);
   ~Server();
 
   // Connect to the bus, prepare the adapter, and register all objects.
@@ -61,6 +57,10 @@ class Server {
 
   void emit_value(const char* object_path, const std::string& value);
 
+  const char* uuid_for_path(const char* path) const;
+  GVariant* char_props(const char* path) const;
+
+  config::Config cfg_;
   std::unique_ptr<wifi::Backend> wifi_;
   GDBusConnection* conn_ = nullptr;
   std::string adapter_;

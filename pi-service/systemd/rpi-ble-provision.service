@@ -1,6 +1,6 @@
 [Unit]
 Description=Raspberry Pi BLE WiFi Provisioning service
-Documentation=https://github.com/your-org/rpi-ble
+Documentation=https://github.com/XPRO-Slovenija/BLE-WIFI-Setup
 # bluetoothd must be up; we manage WiFi so order after the network stack too.
 After=bluetooth.target network.target dbus.service
 Wants=bluetooth.target
@@ -14,6 +14,8 @@ ExecStart=/usr/local/sbin/rpi-ble-provision
 User=root
 Restart=on-failure
 RestartSec=2
+# Exit status 2 means invalid configuration; restarting would not help.
+RestartPreventExitStatus=2
 # Surface logs to the journal with our own tags.
 StandardOutput=journal
 StandardError=journal
